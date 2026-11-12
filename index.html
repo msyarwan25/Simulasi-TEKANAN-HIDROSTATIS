@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi dan LKPD Tekanan Hidrostatis</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b2545'/%3E%3Cpath d='M32 10C24 22 18 29 18 37a14 14 0 0 0 28 0c0-8-6-15-14-27z' fill='%2327c3e6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#0a2342;      /* biru laut dalam */
+  --deep2:#12396b;
+  --aqua:#1fb5d9;      /* aqua ubin kolam */
+  --aqua-d:#0b7c9e;
+  --foam:#e6f5fa;      /* busa */
+  --buoy:#ff5a3c;      /* pelampung */
+  --sun:#ffc43d;
+  --ink:#14233a;
+  --muted:#586b85;
+  --line:#c9e3ee;
+  --head:'Fredoka','Trebuchet MS',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;font-family:var(--body);color:var(--ink);line-height:1.55;
+  background:
+    radial-gradient(900px 500px at 100% 0,#d3eef7 0,transparent 60%),
+    radial-gradient(700px 500px at 0 40%,#dff3f8 0,transparent 60%),
+    var(--foam);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 18px}
+h1,h2,h3{font-family:var(--head);margin:0;letter-spacing:.2px}
+:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+
+/* ---------- Hero ---------- */
+.hero{position:relative;color:#fff;overflow:hidden;
+  background:linear-gradient(170deg,var(--deep) 0%,var(--deep2) 55%,#0f6a94 100%);
+  padding:44px 0 92px}
+.hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:center}
+.hero h1{font-size:clamp(2rem,4.6vw,3.5rem);line-height:1.08;font-weight:700}
+.hero p{max-width:56ch;margin:14px 0 0;color:#cfe7f3;font-size:1.06rem}
+.hero .jump{display:inline-flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.btn{font:700 .98rem var(--body);border:0;border-radius:14px;padding:12px 20px;cursor:pointer;
+  transition:transform .15s,box-shadow .15s,background .15s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn:active{transform:translateY(1px)}
+.btn-sun{background:var(--sun);color:#3b2a00;box-shadow:0 4px 0 #d79d12}
+.btn-sun:hover{box-shadow:0 6px 0 #d79d12;transform:translateY(-1px)}
+.btn-glass{background:rgba(255,255,255,.14);color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.btn-glass:hover{background:rgba(255,255,255,.24)}
+.formula{justify-self:end;text-align:center;background:rgba(255,255,255,.09);border:1.5px solid rgba(255,255,255,.3);
+  border-radius:28px 28px 28px 6px;padding:22px 26px;backdrop-filter:blur(3px)}
+.formula b{display:block;font:600 2.4rem var(--head);letter-spacing:1px}
+.formula span{font-size:.92rem;color:#cfe7f3}
+.hero-waves{position:absolute;left:0;right:0;bottom:-2px;height:70px;z-index:1}
+.hero-waves path{animation:drift 14s linear infinite}
+.hero-waves path:nth-child(2){animation-duration:22s;animation-direction:reverse}
+@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+.drops i{position:absolute;bottom:-20px;width:14px;height:14px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);animation:rise linear infinite;z-index:1}
+@keyframes rise{to{transform:translateY(-420px);opacity:0}}
+
+/* ---------- Section ---------- */
+section{padding:34px 0}
+.sec-title{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.sec-title .ico{width:46px;height:46px;border-radius:14px;background:var(--deep);display:grid;place-items:center;flex:none}
+.sec-title h2{font-size:clamp(1.5rem,3vw,2.1rem);color:var(--deep)}
+.sec-sub{margin:0 0 20px;color:var(--muted);max-width:70ch}
+
+/* ---------- Simulasi ---------- */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+.scene-card{background:#fff;border-radius:26px;padding:10px;box-shadow:0 14px 40px -18px rgba(10,35,66,.45);border:1.5px solid var(--line)}
+#scene{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none;touch-action:none;border-radius:18px}
+#obj{cursor:grab;touch-action:none}
+#obj.drag{cursor:grabbing}
+#obj:focus-visible .ball{stroke:var(--sun);stroke-width:4}
+.wave{animation:drift 7s linear infinite}
+.wave.b{animation-duration:11s;animation-direction:reverse}
+.cloud{animation:cloud 40s ease-in-out infinite alternate}
+@keyframes cloud{to{transform:translateX(70px)}}
+.bub{animation:bub 9s linear infinite;opacity:0}
+@keyframes bub{0%{transform:translateY(0);opacity:0}10%{opacity:.55}100%{transform:translateY(-360px);opacity:0}}
+.hint{animation:bounce 1.4s ease-in-out infinite}
+@keyframes bounce{50%{transform:translateY(-6px)}}
+stop{transition:stop-color .6s ease}
+.side{display:flex;flex-direction:column;gap:16px}
+.panel{background:#fff;border:1.5px solid var(--line);border-radius:22px;padding:16px 16px 18px}
+.panel h3{font-size:1.12rem;color:var(--deep);margin-bottom:10px}
+.liqs{display:grid;gap:8px}
+.liq{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  background:var(--foam);border:2px solid transparent;border-radius:16px;padding:10px 12px;font:inherit;color:inherit;transition:border-color .15s,background .15s}
+.liq:hover{background:#d8eef6}
+.liq[aria-pressed="true"]{border-color:var(--deep);background:#fff;box-shadow:0 3px 0 var(--deep)}
+.liq .dot{width:34px;height:34px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);flex:none;box-shadow:inset -4px -4px 0 rgba(0,0,0,.14)}
+.liq b{display:block;font:600 1.05rem var(--head)}
+.liq small{color:var(--muted);font-weight:700}
+.gauge{background:linear-gradient(160deg,var(--deep),var(--deep2));color:#fff;border:0;position:relative;overflow:hidden}
+.gauge h3{color:#9fdcf0}
+.gauge .val{font:600 3rem/1 var(--head);margin:4px 0 2px;min-height:3rem;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.gauge .val small{font:700 1.1rem var(--body);color:#9fdcf0}
+.gauge .kpa{color:#cfe7f3;font-weight:700;min-height:1.5em}
+.gauge .state{margin-top:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.1);font-weight:700;font-size:.93rem}
+.gauge .rule{margin-top:10px;font-size:.86rem;color:#9fdcf0}
+.gauge.live .state{background:rgba(255,196,61,.2);color:#ffe29a}
+.how ol{margin:0;padding-left:20px;color:var(--ink);font-size:.95rem}
+.how li{margin:5px 0}
+.how .tip{margin-top:10px;background:#fff6dc;border-radius:12px;padding:9px 12px;font-size:.88rem;color:#5a4300;font-weight:600}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.sw{display:flex;gap:9px;align-items:center;font-weight:700;font-size:.93rem;cursor:pointer}
+.sw input{width:19px;height:19px;accent-color:var(--buoy)}
+.btn-line{background:#fff;color:var(--deep);border:2px solid var(--deep);padding:8px 14px;border-radius:12px}
+.btn-line:hover{background:var(--foam)}
+
+/* ---------- LKPD ---------- */
+.lkpd{background:#fff;border-radius:30px;border:1.5px solid var(--line);box-shadow:0 14px 40px -18px rgba(10,35,66,.45);overflow:hidden}
+.lk-head{background:linear-gradient(120deg,var(--deep),var(--aqua-d));color:#fff;padding:26px 30px;position:relative}
+.lk-head h2{font-size:clamp(1.4rem,3vw,2rem)}
+.lk-head p{margin:4px 0 0;color:#cfe7f3}
+.lk-head::after{content:"";position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.08)}
+.lk-body{padding:26px 30px 32px;display:grid;gap:30px}
+.ident{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+label.f{display:block;font-weight:800;color:var(--deep);margin-bottom:5px}
+.in,textarea.in{width:100%;font:600 1rem var(--body);color:var(--ink);background:var(--foam);border:2px solid transparent;border-radius:12px;padding:11px 13px;transition:border-color .15s,background .15s}
+.in:focus,textarea.in:focus{outline:none;border-color:var(--aqua);background:#fff}
+textarea.in{resize:vertical;min-height:112px;line-height:1.5}
+.blk h3{font-size:1.28rem;color:var(--deep);padding-left:14px;border-left:6px solid var(--buoy);line-height:1.25}
+.blk .guide{margin:8px 0 14px;color:var(--muted);font-size:.95rem}
+.tbl-wrap{overflow-x:auto;border-radius:16px;border:2px solid var(--deep)}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th{background:var(--deep);color:#fff;font:600 .98rem var(--head);padding:11px 10px;text-align:center}
+td{border-top:1.5px solid var(--line);padding:6px;text-align:center}
+td.no{width:54px;font:600 1.1rem var(--head);color:var(--deep);background:var(--foam)}
+td .in{background:#fff;border:2px solid var(--line);text-align:center;padding:9px 8px}
+td .in:focus{border-color:var(--aqua)}
+tr:nth-child(even) td:not(.no){background:#f6fbfd}
+.qa{display:grid;gap:18px}
+.qa .q{font-weight:800;color:var(--deep);margin-bottom:6px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:6px;border-top:2px dashed var(--line);padding-top:22px}
+.btn-aqua{background:var(--aqua-d);color:#fff;box-shadow:0 4px 0 #075c76}
+.btn-aqua:hover{box-shadow:0 6px 0 #075c76;transform:translateY(-1px)}
+.btn-buoy{background:var(--buoy);color:#fff;box-shadow:0 4px 0 #c23a20}
+.btn-buoy:hover{box-shadow:0 6px 0 #c23a20;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--muted);border:2px solid var(--line)}
+.btn-ghost:hover{background:var(--foam)}
+.actions .note{flex-basis:100%;color:var(--muted);font-size:.9rem;margin:0}
+
+footer{padding:26px 0 46px;color:var(--muted);text-align:center;font-size:.92rem}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:var(--deep);color:#fff;padding:13px 20px;border-radius:14px;
+  font-weight:700;opacity:0;pointer-events:none;transition:.3s;z-index:50;max-width:90vw;text-align:center;box-shadow:0 12px 30px -10px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.warn{background:var(--buoy)}
+
+@media (max-width:920px){
+  .hero .wrap{grid-template-columns:1fr}
+  .formula{justify-self:start}
+  .sim{grid-template-columns:1fr}
+  .lk-body{padding:20px 16px 26px}
+  .lk-head{padding:22px 18px}
+  .ident{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+@media print{
+  .hero,#simulasi,.actions,footer,#toast{display:none!important}
+  body{background:#fff}
+  .lkpd{box-shadow:none;border:0}
+  .tbl-wrap{overflow:visible}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="drops" aria-hidden="true">
+    <i style="left:6%;animation-duration:9s;animation-delay:0s"></i>
+    <i style="left:18%;animation-duration:12s;animation-delay:2s;width:9px;height:9px"></i>
+    <i style="left:41%;animation-duration:10s;animation-delay:4s"></i>
+    <i style="left:63%;animation-duration:13s;animation-delay:1s;width:10px;height:10px"></i>
+    <i style="left:88%;animation-duration:11s;animation-delay:3s"></i>
+  </div>
+  <div class="wrap">
+    <div>
+      <h1>Seberapa kuat air menekan benda di dalam kolam?</h1>
+      <p>Pindahkan sensor ke berbagai kedalaman, ganti cairannya, lalu temukan sendiri aturan yang mengatur tekanan hidrostatis. Catat hasilnya di LKPD dan simpan sebagai PDF.</p>
+      <div class="jump">
+        <a class="btn btn-sun" href="#simulasi">Mulai simulasi</a>
+        <a class="btn btn-glass" href="#lkpd">Buka LKPD</a>
+      </div>
+    </div>
+    <div class="formula" aria-hidden="true">
+      <b>P = ρ × g × h</b>
+      <span>tekanan hidrostatis di kedalaman h</span>
+    </div>
+  </div>
+  <svg class="hero-waves" viewBox="0 0 1200 70" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M-120 30 Q-90 6 -60 30 T0 30 T60 30 T120 30 T180 30 T240 30 T300 30 T360 30 T420 30 T480 30 T540 30 T600 30 T660 30 T720 30 T780 30 T840 30 T900 30 T960 30 T1020 30 T1080 30 T1140 30 T1200 30 T1260 30 V70 H-120Z" fill="#e6f5fa" opacity=".45"/>
+    <path d="M-120 44 Q-90 24 -60 44 T0 44 T60 44 T120 44 T180 44 T240 44 T300 44 T360 44 T420 44 T480 44 T540 44 T600 44 T660 44 T720 44 T780 44 T840 44 T900 44 T960 44 T1020 44 T1080 44 T1140 44 T1200 44 T1260 44 V70 H-120Z" fill="#e6f5fa"/>
+  </svg>
+</header>
+
+<main>
+<!-- ================= SIMULASI ================= -->
+<section id="simulasi">
+  <div class="wrap">
+    <div class="sec-title">
+      <span class="ico"><svg width="26" height="26" viewBox="0 0 64 64"><path d="M32 8C24 21 17 29 17 38a15 15 0 0 0 30 0c0-9-7-17-15-30z" fill="#27c3e6"/></svg></span>
+      <h2>Simulasi Kolam Tekanan Hidrostatis</h2>
+    </div>
+    <p class="sec-sub">Seret bola sensor ke dalam kolam dan lepaskan. Tekanan yang dialami sensor muncul otomatis. Kedalamannya tidak ditampilkan, jadi bacalah sendiri dengan meteran di sisi kiri kolam.</p>
+
+    <div class="sim">
+      <div>
+        <div class="scene-card">
+          <svg id="scene" viewBox="0 0 960 620" role="img" aria-label="Kolam besar berisi cairan dengan meteran di sebelah kiri dan bola sensor yang bisa diseret">
+            <defs>
+              <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fdcf5"/><stop offset="1" stop-color="#e9f7fc"/></linearGradient>
+              <linearGradient id="gLiq" x1="0" y1="0" x2="0" y2="1"><stop id="lq1" offset="0" stop-color="#7fdcff"/><stop id="lq2" offset="1" stop-color="#1670c4"/></linearGradient>
+              <linearGradient id="gGround" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ed08e"/><stop offset="1" stop-color="#3f9a5b"/></linearGradient>
+              <linearGradient id="gRuler" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd24d"/><stop offset="1" stop-color="#ffb703"/></linearGradient>
+              <radialGradient id="gBall" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#ff9a82"/><stop offset=".55" stop-color="#ff5a3c"/><stop offset="1" stop-color="#b92a12"/></radialGradient>
+              <linearGradient id="gRay" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+              <clipPath id="liqClip"><rect x="140" y="108" width="660" height="432"/></clipPath>
+              <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0a2342" flood-opacity=".35"/></filter>
+            </defs>
+
+            <!-- langit -->
+            <rect width="960" height="556" fill="url(#gSky)"/>
+            <circle cx="880" cy="62" r="46" fill="#ffe07a" opacity=".45"/>
+            <circle cx="880" cy="62" r="28" fill="#ffc43d"/>
+            <g class="cloud" fill="#fff" opacity=".95">
+              <ellipse cx="280" cy="58" rx="46" ry="16"/><ellipse cx="310" cy="46" rx="28" ry="16"/><ellipse cx="250" cy="48" rx="24" ry="13"/>
+            </g>
+            <g class="cloud" fill="#fff" opacity=".85" style="animation-duration:55s">
+              <ellipse cx="560" cy="34" rx="38" ry="12"/><ellipse cx="584" cy="25" rx="22" ry="12"/>
+            </g>
+
+            <!-- tanah -->
+            <rect y="556" width="960" height="64" fill="url(#gGround)"/>
+            <rect y="556" width="960" height="6" fill="#2f8049" opacity=".5"/>
+
+            <!-- cairan -->
+            <g clip-path="url(#liqClip)">
+              <rect id="liqRect" x="140" y="120" width="660" height="420" fill="url(#gLiq)"/>
+              <g opacity=".9">
+                <polygon points="250,120 300,120 380,540 300,540" fill="url(#gRay)" opacity=".5"/>
+                <polygon points="460,120 500,120 560,540 500,540" fill="url(#gRay)" opacity=".4"/>
+                <polygon points="640,120 690,120 770,540 700,540" fill="url(#gRay)" opacity=".4"/>
+              </g>
+              <g id="bubbles" fill="none" stroke="#fff" stroke-width="2"></g>
+              <g transform="translate(140,121)"><g class="wave b"><path id="wv2" fill="#fff" opacity=".22"/></g></g>
+              <g transform="translate(140,120)"><g class="wave"><path id="wv1" fill="#fff" opacity=".35"/></g></g>
+            </g>
+
+            <!-- dinding kolam (kaca) -->
+            <g fill="#ffffff" fill-opacity=".55" stroke="#8fc8dd" stroke-width="2">
+              <rect x="132" y="90" width="8" height="466" rx="3"/>
+              <rect x="800" y="90" width="8" height="466" rx="3"/>
+              <rect x="128" y="540" width="684" height="18" rx="5" fill="#0a2342" fill-opacity=".9" stroke="#0a2342"/>
+            </g>
+            <rect x="120" y="556" width="700" height="8" rx="4" fill="#0a2342" opacity=".5"/>
+
+            <!-- garis permukaan -->
+            <line x1="140" y1="120" x2="800" y2="120" stroke="#fff" stroke-width="2" opacity=".8"/>
+
+            <!-- meteran -->
+            <g id="ruler" filter="url(#sh)"></g>
+
+            <!-- garis bantu -->
+            <g id="guide" style="display:none">
+              <line id="guideLine" x1="112" y1="0" x2="0" y2="0" stroke="#ff2e1f" stroke-width="2" stroke-dasharray="7 5"/>
+              <polygon id="guideArrow" points="0,0 12,-7 12,7" fill="#ff2e1f"/>
+            </g>
+
+            <!-- rak benda -->
+            <g>
+              <rect x="826" y="236" width="118" height="16" rx="6" fill="#0a2342"/>
+              <rect x="868" y="252" width="34" height="304" fill="#12396b"/>
+              <text x="885" y="276" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="13" font-weight="600" fill="#fff">Rak benda</text>
+            </g>
+            <g id="hint" class="hint" transform="translate(885,150)">
+              <rect x="-52" y="-22" width="104" height="30" rx="15" fill="#0a2342"/>
+              <polygon points="-8,8 8,8 0,18" fill="#0a2342"/>
+              <text y="-2" text-anchor="middle" font-family="Nunito,sans-serif" font-size="14" font-weight="800" fill="#fff">Seret aku!</text>
+            </g>
+
+            <!-- benda: bola sensor -->
+            <g id="obj" tabindex="0" role="button" aria-label="Bola sensor. Seret atau gunakan tombol panah untuk memindahkan.">
+              <g id="arrows"></g>
+              <circle class="ball" r="22" fill="url(#gBall)" stroke="#8c1f0b" stroke-width="2" filter="url(#sh)"/>
+              <path d="M-22 0 H22" stroke="#fff" stroke-width="4" opacity=".9"/>
+              <circle r="8" fill="#fff" stroke="#0a2342" stroke-width="2"/>
+              <circle r="2.6" fill="#0a2342"/>
+              <ellipse cx="-8" cy="-12" rx="6" ry="3.5" fill="#fff" opacity=".55" transform="rotate(-35 -8 -12)"/>
+            </g>
+
+            <!-- label tekanan -->
+            <g id="tag" style="display:none;pointer-events:none">
+              <rect id="tagBg" rx="10" ry="10" height="30" fill="#fff" stroke="#0a2342" stroke-width="2"/>
+              <text id="tagTx" x="12" y="21" font-family="Fredoka,sans-serif" font-size="16" font-weight="600" fill="#0a2342"></text>
+            </g>
+          </svg>
+        </div>
+        <div class="tools">
+          <label class="sw"><input type="checkbox" id="guideToggle" checked> Tampilkan garis bantu ke meteran</label>
+          <button class="btn btn-line" id="resetBtn" type="button">Kembalikan benda ke rak</button>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="panel">
+          <h3>Pilih cairan</h3>
+          <div class="liqs" id="liqs">
+            <button class="liq" type="button" data-liq="air" aria-pressed="true"><span class="dot" style="background:linear-gradient(135deg,#7fdcff,#1670c4)"></span><span><b>Air</b><small>massa jenis 1.000 kg/m³</small></span></button>
+            <button class="liq" type="button" data-liq="minyak" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#ffe58a,#d99a0b)"></span><span><b>Minyak</b><small>massa jenis 800 kg/m³</small></span></button>
+            <button class="liq" type="button" data-liq="sirup" aria-pressed="false"><span class="dot" style="background:linear-gradient(135deg,#ff8a97,#8a1230)"></span><span><b>Sirup</b><small>massa jenis 1.300 kg/m³</small></span></button>
+          </div>
+        </div>
+
+        <div class="panel gauge" id="gauge" aria-live="polite">
+          <h3>Tekanan hidrostatis sensor</h3>
+          <div class="val"><span id="pVal">–</span><small id="pUnit"></small></div>
+          <div class="kpa" id="pKpa"></div>
+          <div class="state" id="pState">Letakkan sensor di dalam kolam.</div>
+          <div class="rule">Cairan: <b id="pLiq">Air</b>, percepatan gravitasi g = 10 m/s²</div>
+        </div>
+
+        <div class="panel how">
+          <h3>Cara memakai</h3>
+          <ol>
+            <li>Pilih jenis cairan.</li>
+            <li>Seret sensor ke kolam, lalu lepaskan.</li>
+            <li>Baca kedalaman sensor pada meteran. Angka 0 ada di permukaan cairan.</li>
+            <li>Catat hasilnya di tabel LKPD.</li>
+          </ol>
+          <div class="tip">Satu kotak kecil pada meteran bernilai 0,1 m. Garis panjang menunjukkan 0,5 m dan 1 m. Sensor berhenti tepat di garis 0,1 m terdekat saat dilepas.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LKPD ================= -->
+<section id="lkpd">
+  <div class="wrap">
+    <div class="lkpd">
+      <div class="lk-head">
+        <h2>Lembar Kerja Peserta Didik (LKPD)</h2>
+        <p>Tekanan Hidrostatis. Gunakan simulasi di atas untuk mengisi seluruh bagian.</p>
+      </div>
+      <div class="lk-body">
+
+        <div class="ident">
+          <div><label class="f" for="nama">Nama</label><input class="in" id="nama" data-save="nama" type="text" autocomplete="name" placeholder="Tulis nama lengkapmu"></div>
+          <div><label class="f" for="kelas">Kelas</label><input class="in" id="kelas" data-save="kelas" type="text" placeholder="Contoh: 8A"></div>
+        </div>
+
+        <div class="blk">
+          <h3>Tabel Hasil Pengamatan Percobaan 1: Massa Jenis Zat Cair terhadap Tekanan Hidrostatis</h3>
+          <p class="guide">Letakkan sensor pada kedalaman yang sama untuk setiap cairan, lalu ganti cairannya. Catat jenis cairan, massa jenisnya, dan tekanan yang muncul.</p>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>No</th><th>Jenis Cairan</th><th>Massa Jenis (kg/m³)</th><th>Besar Tekanan Hidrostatis (Pa)</th></tr></thead>
+              <tbody id="t1"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3>Tabel Hasil Pengamatan Percobaan 2: Hubungan Kedalaman dengan Tekanan Hidrostatis</h3>
+          <p class="guide">Pilih satu cairan, lalu letakkan sensor pada tiga kedalaman yang berbeda. Baca kedalamannya dari meteran, lalu catat tekanan yang muncul.</p>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>No</th><th>Jenis Cairan</th><th>Kedalaman (m)</th><th>Tekanan Hidrostatis (Pa)</th></tr></thead>
+              <tbody id="t2"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3>Analisis Data</h3>
+          <p class="guide">Gunakan data pada kedua tabel untuk menjawab pertanyaan berikut.</p>
+          <div class="qa">
+            <div><div class="q">1. Bagaimana hubungan jenis cairan dengan tekanan hidrostatis?</div><textarea class="in" id="q1" data-save="q1" placeholder="Tulis jawabanmu di sini..."></textarea></div>
+            <div><div class="q">2. Bagaimana hubungan kedalaman dengan tekanan hidrostatis?</div><textarea class="in" id="q2" data-save="q2" placeholder="Tulis jawabanmu di sini..."></textarea></div>
+          </div>
+        </div>
+
+        <div class="blk">
+          <h3>Kesimpulan</h3>
+          <p class="guide">Tuliskan kesimpulan dari kedua percobaan dengan kalimatmu sendiri.</p>
+          <textarea class="in" id="kes" data-save="kes" placeholder="Tulis kesimpulanmu di sini..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-aqua" id="saveBtn" type="button">Simpan jawaban</button>
+          <button class="btn btn-buoy" id="pdfBtn" type="button">Unduh PDF</button>
+          <button class="btn btn-ghost" id="clearBtn" type="button">Hapus semua jawaban</button>
+          <p class="note">Jawabanmu juga tersimpan otomatis di perangkat ini, jadi aman jika halaman tertutup. PDF berisi nama dan kelas, kedua tabel, analisis data, dan kesimpulan.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">Media pembelajaran IPA: Tekanan Hidrostatis</div></footer>
+<div id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+const mk = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+/* ====================== SIMULASI ====================== */
+const SURF = 120, PPM = 70;            // y permukaan cairan, piksel per meter
+const TL = 140, TR = 800, BOT = 540;   // batas kolam
+const R = 22, G = 10, W = 960;
+const LIQ = {
+  air:    { name: 'Air',    rho: 1000, top: '#7fdcff', bot: '#1670c4' },
+  minyak: { name: 'Minyak', rho: 800,  top: '#ffe58a', bot: '#d99a0b' },
+  sirup:  { name: 'Sirup',  rho: 1300, top: '#ff8a97', bot: '#8a1230' }
+};
+const MAXP = 1300 * G * 6;
+const HOME = { x: 886, y: 236 - R };
+let cur = 'air';
+const st = { x: HOME.x, y: HOME.y, dragging: false, placed: false };
+
+const svg = $('#scene'), obj = $('#obj');
+const fmt = n => Math.round(n).toLocaleString('id-ID');
+
+// gelombang
+(function waves() {
+  const build = (amp) => {
+    let d = `M0 0 Q20 ${-amp} 40 0`;
+    for (let x = 80; x <= 800; x += 40) d += ` T${x} 0`;
+    return d + ' V16 H0Z';
+  };
+  $('#wv1').setAttribute('d', build(6));
+  $('#wv2').setAttribute('d', build(4));
+})();
+
+// gelembung
+(function bubbles() {
+  const g = $('#bubbles');
+  for (let i = 0; i < 12; i++) {
+    const c = mk('circle', {
+      cx: 160 + Math.random() * 620, cy: 520 - Math.random() * 40, r: 2 + Math.random() * 4, class: 'bub'
+    }, g);
+    c.style.animationDelay = (-Math.random() * 9).toFixed(2) + 's';
+    c.style.animationDuration = (7 + Math.random() * 6).toFixed(1) + 's';
+  }
+})();
+
+// meteran: 0 di permukaan cairan, garis tiap 0,1 m
+(function ruler() {
+  const g = $('#ruler');
+  mk('rect', { x: 44, y: SURF - 12, width: 68, height: 6 * PPM + 20, rx: 5, fill: 'url(#gRuler)', stroke: '#b57f00', 'stroke-width': 1.5 }, g);
+  for (let i = 0; i <= 60; i++) {
+    const y = SURF + i * (PPM / 10);
+    const big = i % 10 === 0, mid = i % 5 === 0;
+    const len = big ? 32 : mid ? 21 : 11;
+    mk('line', { x1: 112, x2: 112 - len, y1: y, y2: y, stroke: '#3a2800', 'stroke-width': big ? 2.2 : mid ? 1.6 : 1 }, g);
+    if (mid) {
+      const t = mk('text', {
+        x: 112 - len - 4, y: y + 4, 'text-anchor': 'end', 'font-family': 'Nunito,sans-serif',
+        'font-size': big ? 14 : 11, 'font-weight': big ? 800 : 700, fill: '#3a2800'
+      }, g);
+      t.textContent = (i / 10).toLocaleString('id-ID');
+    }
+  }
+  const t = mk('text', { x: 78, y: SURF - 18, 'text-anchor': 'middle', 'font-family': 'Fredoka,sans-serif', 'font-size': 14, 'font-weight': 600, fill: '#0a2342' }, g);
+  t.textContent = 'Meteran (m)';
+})();
+
+function pt(e) {
+  const p = svg.createSVGPoint();
+  p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function zone() {
+  if (st.x <= TL || st.x >= TR) return { z: 'out' };
+  if (st.y <= SURF) return { z: 'air' };
+  return { z: 'liq', h: Math.round((st.y - SURF) / PPM * 10) / 10 };
+}
+
+function place() { obj.setAttribute('transform', `translate(${st.x},${st.y})`); }
+
+function finalize() {
+  // jangan menumpuk di dinding kaca
+  if (st.y > SURF - 30 - R) {
+    if (st.x > TL - R && st.x < TL + R) st.x = st.x < TL ? TL - R : TL + R;
+    if (st.x > TR - R && st.x < TR + R) st.x = st.x < TR ? TR - R : TR + R;
+  }
+  const info = zone();
+  if (info.z === 'liq') st.y = SURF + info.h * PPM;  // snap ke 0,1 m
+  st.y = clamp(st.y, R, BOT - R);
+  st.x = clamp(st.x, R, W - R);
+  st.placed = true;
+  place();
+  render();
+}
+
+function drawArrows(P) {
+  const g = $('#arrows');
+  g.innerHTML = '';
+  if (P <= 0) return;
+  const L = 10 + 38 * Math.min(1, P / MAXP);
+  [0, 90, 180, 270].forEach(a => {
+    const grp = mk('g', { transform: `rotate(${a})` }, g);
+    const x0 = R + 6 + L, x1 = R + 9;
+    mk('line', { x1: x0, y1: 0, x2: x1 + 4, y2: 0, stroke: '#0a2342', 'stroke-width': 6, 'stroke-linecap': 'round' }, grp);
+    mk('polygon', { points: `${x1 - 4},0 ${x1 + 9},-8 ${x1 + 9},8`, fill: '#0a2342', stroke: '#0a2342', 'stroke-width': 3, 'stroke-linejoin': 'round' }, grp);
+    mk('line', { x1: x0, y1: 0, x2: x1 + 4, y2: 0, stroke: '#fff', 'stroke-width': 2.6, 'stroke-linecap': 'round' }, grp);
+    mk('polygon', { points: `${x1 - 1},0 ${x1 + 8},-5.5 ${x1 + 8},5.5`, fill: '#fff' }, grp);
+  });
+}
+
+function setPanel(val, unit, kpa, text, live) {
+  $('#pVal').textContent = val;
+  $('#pUnit').textContent = unit;
+  $('#pKpa').textContent = kpa;
+  $('#pState').textContent = text;
+  $('#gauge').classList.toggle('live', !!live);
+}
+
+function render() {
+  const tag = $('#tag'), guide = $('#guide');
+  $('#pLiq').textContent = LIQ[cur].name;
+  if (st.dragging) {
+    tag.style.display = 'none'; guide.style.display = 'none'; drawArrows(0);
+    setPanel('…', '', '', 'Sensor sedang dipindahkan. Lepaskan untuk melihat tekanan.', false);
+    return;
+  }
+  if (!st.placed) {
+    tag.style.display = 'none'; guide.style.display = 'none'; drawArrows(0);
+    setPanel('–', '', '', 'Letakkan sensor di dalam kolam.', false);
+    return;
+  }
+  const info = zone();
+  if (info.z !== 'liq') {
+    tag.style.display = 'none'; guide.style.display = 'none'; drawArrows(0);
+    setPanel('–', '', '', info.z === 'air' ? 'Sensor belum tercelup. Geser ke bawah permukaan cairan.' : 'Sensor berada di luar kolam. Seret ke dalam kolam.', false);
+    return;
+  }
+  const P = Math.round(LIQ[cur].rho * G * info.h);
+  drawArrows(P);
+  setPanel(fmt(P), 'Pa', '= ' + (P / 1000).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' kPa', 'Sensor berada di dalam ' + LIQ[cur].name.toLowerCase() + '. Baca kedalamannya pada meteran.', true);
+
+  // label tekanan
+  const tx = $('#tagTx');
+  tx.textContent = 'P = ' + fmt(P) + ' Pa';
+  tag.style.display = '';
+  const w = tx.getBBox().width + 24;
+  $('#tagBg').setAttribute('width', w);
+  let tX = st.x + R + 56, tY = clamp(st.y - 15, SURF + 6, BOT - 36);
+  if (tX + w > TR - 6) tX = st.x - R - 56 - w;
+  tag.setAttribute('transform', `translate(${tX},${tY})`);
+
+  // garis bantu ke meteran
+  guide.style.display = $('#guideToggle').checked ? '' : 'none';
+  const gl = $('#guideLine');
+  gl.setAttribute('y1', st.y); gl.setAttribute('y2', st.y);
+  gl.setAttribute('x1', 114); gl.setAttribute('x2', st.x - R - 2);
+  $('#guideArrow').setAttribute('transform', `translate(100,${st.y}) scale(-1,1) translate(-14,0)`);
+  $('#guideArrow').setAttribute('points', '0,0 12,-7 12,7');
+}
+
+let off = { dx: 0, dy: 0 };
+obj.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const p = pt(e);
+  off = { dx: st.x - p.x, dy: st.y - p.y };
+  st.dragging = true;
+  obj.classList.add('drag');
+  obj.setPointerCapture(e.pointerId);
+  $('#hint').style.display = 'none';
+  render();
+});
+obj.addEventListener('pointermove', e => {
+  if (!st.dragging) return;
+  const p = pt(e);
+  st.x = clamp(p.x + off.dx, R, W - R);
+  st.y = clamp(p.y + off.dy, R, BOT - R);
+  place();
+});
+const drop = e => {
+  if (!st.dragging) return;
+  st.dragging = false;
+  obj.classList.remove('drag');
+  try { obj.releasePointerCapture(e.pointerId); } catch (_) {}
+  finalize();
+};
+obj.addEventListener('pointerup', drop);
+obj.addEventListener('pointercancel', drop);
+obj.addEventListener('keydown', e => {
+  const s = PPM / 10 * (e.shiftKey ? 5 : 1);
+  const m = { ArrowUp: [0, -s], ArrowDown: [0, s], ArrowLeft: [-s, 0], ArrowRight: [s, 0] }[e.key];
+  if (!m) return;
+  e.preventDefault();
+  $('#hint').style.display = 'none';
+  st.x = clamp(st.x + m[0], R, W - R);
+  st.y = clamp(st.y + m[1], R, BOT - R);
+  finalize();
+});
+
+function setLiquid(key) {
+  cur = key;
+  const L = LIQ[key];
+  $('#lq1').setAttribute('stop-color', L.top);
+  $('#lq2').setAttribute('stop-color', L.bot);
+  document.querySelectorAll('.liq').forEach(b => b.setAttribute('aria-pressed', b.dataset.liq === key));
+  render();
+}
+document.querySelectorAll('.liq').forEach(b => b.addEventListener('click', () => setLiquid(b.dataset.liq)));
+$('#guideToggle').addEventListener('change', render);
+$('#resetBtn').addEventListener('click', () => {
+  st.x = HOME.x; st.y = HOME.y; st.placed = false; st.dragging = false;
+  place(); render();
+});
+place(); setLiquid('air');
+
+/* ====================== LKPD ====================== */
+const T1 = ['Jenis cairan', 'Massa jenis (kg/m³)', 'Tekanan hidrostatis (Pa)'];
+const T2 = ['Jenis cairan', 'Kedalaman (m)', 'Tekanan hidrostatis (Pa)'];
+function buildTable(id, pre, labels) {
+  $(id).innerHTML = [0, 1, 2].map(i =>
+    `<tr><td class="no">${i + 1}</td>` +
+    ['c', 'a', 'p'].map((k, j) =>
+      `<td><input class="in" type="text" inputmode="${k === 'c' ? 'text' : 'decimal'}" autocomplete="off" data-save="${pre}-${i}-${k}" aria-label="${labels[j]} data ${i + 1}"></td>`
+    ).join('') + '</tr>').join('');
+}
+buildTable('#t1', 't1', T1);
+buildTable('#t2', 't2', T2);
+
+const KEY = 'lkpd-tekanan-hidrostatis-v1';
+const fields = () => [...document.querySelectorAll('[data-save]')];
+const collect = () => { const o = {}; fields().forEach(f => o[f.dataset.save] = f.value); return o; };
+function load() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KEY) || '{}');
+    fields().forEach(f => { if (o[f.dataset.save] != null) f.value = o[f.dataset.save]; });
+  } catch (_) {}
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(collect())); return true; } catch (_) { return false; }
+}
+load();
+let timer;
+document.addEventListener('input', e => {
+  if (e.target.matches('[data-save]')) { clearTimeout(timer); timer = setTimeout(save, 400); }
+});
+
+let tt;
+function toast(msg, warn) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'show' + (warn ? ' warn' : '');
+  clearTimeout(tt);
+  tt = setTimeout(() => t.className = '', 2800);
+}
+
+$('#saveBtn').addEventListener('click', () => {
+  toast(save() ? 'Jawaban tersimpan di perangkat ini.' : 'Jawaban belum bisa disimpan. Unduh PDF agar jawabanmu aman.', !localStorage);
+});
+$('#clearBtn').addEventListener('click', () => {
+  if (!confirm('Hapus semua jawaban di LKPD? Tindakan ini tidak bisa dibatalkan.')) return;
+  fields().forEach(f => f.value = '');
+  try { localStorage.removeItem(KEY); } catch (_) {}
+  toast('Semua jawaban sudah dihapus.');
+});
+
+/* ====================== PDF ====================== */
+const slug = s => (s || '').trim().replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '') || 'siswa';
+
+function makePDF(d) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const PW = 210, M = 15, CW = PW - 2 * M, BOTTOM = 280;
+  const DEEP = [10, 35, 66], AQUA = [31, 181, 217], AQD = [11, 124, 158], FOAM = [230, 245, 250], BUOY = [255, 90, 60], INK = [20, 35, 58], LINE = [201, 227, 238];
+  let y = 0;
+
+  // kepala halaman pertama
+  doc.setFillColor(...DEEP); doc.rect(0, 0, PW, 40, 'F');
+  doc.setFillColor(...AQUA); doc.rect(0, 40, PW, 3, 'F');
+  doc.setFillColor(...BUOY); doc.rect(0, 40, 38, 3, 'F');
+  // ikon kolam
+  doc.setFillColor(...FOAM); doc.roundedRect(PW - M - 34, 9, 34, 24, 3, 3, 'F');
+  doc.setFillColor(...AQUA); doc.roundedRect(PW - M - 31, 17, 28, 13, 2, 2, 'F');
+  doc.setFillColor(...BUOY); doc.circle(PW - M - 17, 21.5, 3.2, 'F');
+  doc.setDrawColor(...DEEP); doc.setLineWidth(0.4); doc.line(PW - M - 31, 17, PW - M - 3, 17);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
+  doc.text('LEMBAR KERJA PESERTA DIDIK', M, 19);
+  doc.setFontSize(13); doc.setFont('helvetica', 'normal');
+  doc.text('Tekanan Hidrostatis', M, 27);
+  doc.setFontSize(9); doc.setTextColor(159, 220, 240);
+  doc.text('Hasil simulasi kolam: air, minyak, dan sirup', M, 34);
+  y = 52;
+
+  // identitas
+  doc.setFillColor(...FOAM); doc.setDrawColor(...AQUA); doc.setLineWidth(0.5);
+  doc.roundedRect(M, y, CW, 22, 3, 3, 'FD');
+  doc.setTextColor(...DEEP); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+  doc.text('Nama', M + 5, y + 8.5);
+  doc.text('Kelas', M + 5, y + 16.5);
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(...INK);
+  doc.text(': ' + (d.nama || '-'), M + 24, y + 8.5);
+  doc.text(': ' + (d.kelas || '-'), M + 24, y + 16.5);
+  y += 32;
+
+  const ensure = h => {
+    if (y + h > BOTTOM) {
+      doc.addPage();
+      doc.setFillColor(...DEEP); doc.rect(0, 0, PW, 8, 'F');
+      doc.setFillColor(...BUOY); doc.rect(0, 8, 38, 1.6, 'F');
+      y = 18;
+    }
+  };
+
+  const title = txt => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5);
+    const lines = doc.splitTextToSize(txt, CW - 8);
+    ensure(lines.length * 5.6 + 8);
+    doc.setFillColor(...BUOY); doc.rect(M, y, 2.2, lines.length * 5.6 + 0.6, 'F');
+    doc.setTextColor(...DEEP);
+    lines.forEach((l, i) => doc.text(l, M + 6, y + 4.4 + i * 5.6));
+    y += lines.length * 5.6 + 5;
+  };
+
+  const table = (heads, widths, rows) => {
+    const x0 = M;
+    const headRow = () => {
+      ensure(24);
+      doc.setFillColor(...DEEP); doc.rect(x0, y, CW, 11, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      let x = x0;
+      heads.forEach((h, i) => {
+        const ls = doc.splitTextToSize(h, widths[i] - 3);
+        const top = y + 5.5 - (ls.length - 1) * 2 + 1;
+        ls.forEach((l, k) => doc.text(l, x + widths[i] / 2, top + k * 4, { align: 'center' }));
+        x += widths[i];
+      });
+      y += 11;
+    };
+    headRow();
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    rows.forEach((r, ri) => {
+      const cells = r.map((v, i) => doc.splitTextToSize(String(v || '-'), widths[i] - 4));
+      const rh = Math.max(10, Math.max(...cells.map(c => c.length)) * 4.8 + 4);
+      if (y + rh > BOTTOM) { ensure(999); headRow(); doc.setFont('helvetica', 'normal'); doc.setFontSize(10); }
+      let x = x0;
+      cells.forEach((c, i) => {
+        doc.setFillColor(...(i === 0 ? FOAM : ri % 2 ? [246, 251, 253] : [255, 255, 255]));
+        doc.setDrawColor(...LINE); doc.setLineWidth(0.3);
+        doc.rect(x, y, widths[i], rh, 'FD');
+        doc.setTextColor(...(i === 0 ? DEEP : INK));
+        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        const top = y + rh / 2 - (c.length - 1) * 2.4 + 1.3;
+        c.forEach((l, k) => doc.text(l, x + widths[i] / 2, top + k * 4.8, { align: 'center' }));
+        x += widths[i];
+      });
+      y += rh;
+    });
+    doc.setDrawColor(...DEEP); doc.setLineWidth(0.6);
+    y += 8;
+  };
+
+  const box = txt => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    const lines = doc.splitTextToSize(txt && txt.trim() ? txt : '(belum diisi)', CW - 10);
+    let i = 0;
+    while (i < lines.length) {
+      ensure(18);
+      const avail = Math.max(1, Math.floor((BOTTOM - y - 7) / 5));
+      const n = Math.min(avail, lines.length - i);
+      const h = n * 5 + 7;
+      doc.setFillColor(...FOAM); doc.setDrawColor(...AQUA); doc.setLineWidth(0.4);
+      doc.roundedRect(M, y, CW, h, 2.5, 2.5, 'FD');
+      doc.setTextColor(...INK);
+      for (let k = 0; k < n; k++) doc.text(lines[i + k], M + 5, y + 6.5 + k * 5);
+      i += n; y += h + 2;
+    }
+    y += 5;
+  };
+
+  const q = txt => {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+    const lines = doc.splitTextToSize(txt, CW);
+    ensure(lines.length * 5 + 26);
+    doc.setTextColor(...DEEP);
+    lines.forEach((l, k) => doc.text(l, M, y + 4 + k * 5));
+    y += lines.length * 5 + 3;
+  };
+
+  title('Tabel Hasil Pengamatan Percobaan 1: Massa Jenis Zat Cair terhadap Tekanan Hidrostatis');
+  table(['No', 'Jenis Cairan', 'Massa Jenis (kg/m³)', 'Besar Tekanan Hidrostatis (Pa)'], [14, 54, 52, 60],
+    [0, 1, 2].map(i => [i + 1, d[`t1-${i}-c`], d[`t1-${i}-a`], d[`t1-${i}-p`]]));
+
+  title('Tabel Hasil Pengamatan Percobaan 2: Hubungan Kedalaman dengan Tekanan Hidrostatis');
+  table(['No', 'Jenis Cairan', 'Kedalaman (m)', 'Tekanan Hidrostatis (Pa)'], [14, 54, 52, 60],
+    [0, 1, 2].map(i => [i + 1, d[`t2-${i}-c`], d[`t2-${i}-a`], d[`t2-${i}-p`]]));
+
+  title('Analisis Data');
+  q('1. Bagaimana hubungan jenis cairan dengan tekanan hidrostatis?');
+  box(d.q1);
+  q('2. Bagaimana hubungan kedalaman dengan tekanan hidrostatis?');
+  box(d.q2);
+
+  title('Kesimpulan');
+  box(d.kes);
+
+  // kaki halaman
+  const n = doc.getNumberOfPages();
+  const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  for (let p = 1; p <= n; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(M, 287, PW - M, 287);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(88, 107, 133);
+    doc.text('LKPD Tekanan Hidrostatis  |  ' + (d.nama || '-') + '  |  Kelas ' + (d.kelas || '-'), M, 292);
+    doc.text('Halaman ' + p + ' dari ' + n + '  |  ' + tgl, PW - M, 292, { align: 'right' });
+  }
+  doc.save(`LKPD_Tekanan_Hidrostatis_${slug(d.nama)}_${slug(d.kelas)}.pdf`);
+}
+
+$('#pdfBtn').addEventListener('click', () => {
+  const d = collect();
+  if (!d.nama.trim() || !d.kelas.trim()) {
+    toast('Isi nama dan kelas dulu sebelum mengunduh PDF.', true);
+    (d.nama.trim() ? $('#kelas') : $('#nama')).focus();
+    return;
+  }
+  save();
+  if (!window.jspdf) {
+    toast('Pustaka PDF belum termuat. Pilih "Simpan sebagai PDF" pada jendela cetak.', true);
+    setTimeout(() => window.print(), 900);
+    return;
+  }
+  try { makePDF(d); toast('PDF berhasil dibuat dan diunduh.'); }
+  catch (err) { console.error(err); toast('PDF gagal dibuat. Coba lagi atau gunakan menu cetak peramban.', true); }
+});
+})();
+</script>
+</body>
+</html>
